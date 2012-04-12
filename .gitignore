@@ -1,0 +1,7 @@
+target/
+project/target/
+project/boot/
+ensime.bak
+**/*.scala~
+.idea/*
+.idea_modules/*
