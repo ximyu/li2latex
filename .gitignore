@@ -2,6 +2,6 @@ target/
 project/target/
 project/boot/
 ensime.bak
-**/*.scala~
+*.scala~
 .idea/*
 .idea_modules/*
