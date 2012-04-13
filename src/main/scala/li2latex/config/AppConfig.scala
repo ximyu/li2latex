@@ -1,4 +1,4 @@
-package li2latex
+package li2latex.config
 
 object AppConfig {
   val API_KEY = "p8fo989psm4n"

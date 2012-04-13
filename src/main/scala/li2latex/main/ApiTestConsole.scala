@@ -1,12 +1,13 @@
-package li2latex
+package li2latex.main
 
 import org.scribe.builder.api.LinkedInApi
 import org.scribe.builder.ServiceBuilder
 import org.scribe.oauth.OAuthService
 import org.scribe.model.{Verifier, Verb, OAuthRequest, Token}
 import org.scribe.exceptions.OAuthException
+import li2latex.config.AppConfig
 
-object APITestConsole {
+object ApiTestConsole {
   private lazy val builder = new ServiceBuilder
   private lazy val service: OAuthService =
     builder provider (new LinkedInApi) apiKey (AppConfig.API_KEY) apiSecret (AppConfig.API_SECRET) build()
@@ -44,16 +45,20 @@ object APITestConsole {
       val nextFunc = readLine().toLowerCase match {
         case "f" => Some(getByField)
         case "u" => Some(getByUrl)
-        case _   => None
+        case _ => None
       }
 
-      nextFunc map { f =>
-        print("Enter your " + {if (f == getByField) "Field" else "URL"} + ": ")
-        f(readLine())
-      } foreach { resp =>
-        println("LinkedIn Response:")
-        println(resp)
-        getInstruction()
+      nextFunc map {
+        f =>
+          print("Enter your " + {
+            if (f == getByField) "Field" else "URL"
+          } + ": ")
+          f(readLine())
+      } foreach {
+        resp =>
+          println("LinkedIn Response:")
+          println(resp)
+          getInstruction()
       }
     }
 
@@ -63,20 +68,20 @@ object APITestConsole {
     }
   }
 
-  private def getAccessToken : Option[Token] = {
-      // Get the Request Token
-      val reqToken = service.getRequestToken
-      val authUrl = service.getAuthorizationUrl(reqToken)
-      println("Please open the following authorization URL:\n")
-      println(authUrl)
-      println("\nPaste your verifier here:")
-      val v = new Verifier(readLine())
-      // Get the Access Token
-      try {
-        val accessToken = service.getAccessToken(reqToken, v)
-        Some(accessToken)
-      } catch {
-        case e: OAuthException => None
-      }
+  private def getAccessToken: Option[Token] = {
+    // Get the Request Token
+    val reqToken = service.getRequestToken
+    val authUrl = service.getAuthorizationUrl(reqToken)
+    println("Please open the following authorization URL:\n")
+    println(authUrl)
+    println("\nPaste your verifier here:")
+    val v = new Verifier(readLine())
+    // Get the Access Token
+    try {
+      val accessToken = service.getAccessToken(reqToken, v)
+      Some(accessToken)
+    } catch {
+      case e: OAuthException => None
+    }
   }
 }
