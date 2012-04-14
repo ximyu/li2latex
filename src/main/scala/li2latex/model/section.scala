@@ -1,17 +1,16 @@
 package li2latex.model
 
-import li2latex.template.TemplateProvider
-import li2latex.TemplateProvider
+import li2latex.oauth.OAuthFields
 
-trait Section {
-  def toLatexStr: String
+case class LinkedInFields(name: String) {
+  def >>(sectionTitle: String) = Section(name, sectionTitle, ParserSelector.getParser(name))
 }
 
-case class NameSection(name: String) extends Section {
-  def toLatexStr: String = TemplateProvider("aa").getNameTemplate(name)
+object LinkedInFields {
+  implicit def stringToLinkedInFields(fields: String): LinkedInFields = LinkedInFields(fields)
 }
 
-case class SectionWithTitle(title: String) extends Section {
-  def toLatexStr: String
+case class Section(fields: String, title: String, parser: Option[FieldsParser]) extends OAuthFields {
+  def getFormattedItems: Seq[FormattedItem] =
+    parser map ( _ parseOAuthResponse getOAuthResponse ) getOrElse Nil
 }
-
