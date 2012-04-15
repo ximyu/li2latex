@@ -9,7 +9,12 @@ object Li2Latex extends Build {
     scalaVersion := "2.9.1",
     libraryDependencies ++= Seq(
       "org.scribe" % "scribe" % "1.3.0",
-      "net.databinder" %% "dispatch-http" % "0.8.8"
+      "net.databinder" %% "dispatch-http" % "0.8.8",
+      "org.specs2" %% "specs2" % "1.9" % "test"
+    ),
+    resolvers ++= Seq(
+      "snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
+      "releases"  at "http://oss.sonatype.org/content/repositories/releases"
     )
   )
 

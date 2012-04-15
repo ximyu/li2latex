@@ -1,7 +1,17 @@
 package li2latex.oauth
 
-trait OAuthFields extends OAuthClient{
+import xml.{NodeSeq, XML}
+
+
+trait OAuthFields {
   val fields: String
 
-  lazy val getOAuthResponse: String = OAuthClientImpl getByField fields
+  lazy val getOAuthResponse: Option[NodeSeq] =
+    XML loadString (OAuthClientImpl getByField fields) match {
+      case <person>{ ns @ _* }</person> => Some(ns)
+      case <error>{ _* }</error>        => None
+      case _                            => None
+    }
+
+  lazy val getOAuthResponseRaw: String = OAuthClientImpl getByField fields
 }
