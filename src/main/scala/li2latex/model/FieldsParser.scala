@@ -6,6 +6,10 @@ sealed trait FieldsParser {
   val parseOAuthResponse: NodeSeq => Seq[FormattedItem]
 }
 
+object ContactInfoParser extends FieldsParser {
+  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
+}
+
 object PositionsParser extends FieldsParser {
   val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
 }
