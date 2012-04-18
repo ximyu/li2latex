@@ -16,7 +16,7 @@ sealed trait FieldsParser {
   private val nodeCountMatches: NodeSeq => String => Boolean = input => field =>
     (input headOption) flatMap (_.attributes.asAttrMap.get("total")) map (_.toInt == (input \ field).length ) getOrElse false
 
-  val parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
+  def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
     if (!nodeCountMatches(resp)(thisField)) Left(NODE_COUNT_NOT_MATCH)
     else Right(for {
       node <- resp \ thisField
@@ -96,12 +96,34 @@ object PublicationsParser extends FieldsParser {
 //  }
 //}
 
-//object SkillsParser extends FieldsParser {
-//  protected val thisField = "skill"
-//  protected val extractFromXML: Node => FormattedItem = node => {
-//    PlainFormattedSectionItem("", "")
-//  }
-//}
+object SkillsParser extends FieldsParser {
+  protected val thisField = "skill"
+
+  protected val extractFromXML: Node => Option[FormattedItem] = node => for {
+    name <- getTextValue(node)(Seq("name"))
+  } yield PlainFormattedSectionItem("", name)
+
+  override def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
+    import scala.collection.mutable.Map
+    val skillCategories: Map[String, List[String]] =
+      Map("Programming Languages" -> Nil,
+          "Framework"             -> Nil,
+          "Operating Systems"     -> Nil)
+    var currentCategory: String = "Programming Languages"
+    super.parseOAuthResponse(resp).right.foreach{items =>
+      items.foreach{item =>
+        item match {
+          case PlainFormattedSectionItem(_, x) => skillCategories.get(x) match {
+            case Some(_) => currentCategory = x
+            case None    => skillCategories.put(currentCategory, skillCategories.get(currentCategory).getOrElse(Nil) ++ List(x))
+          }
+          case _ => ()
+        }
+      }
+    }
+    Right((for ((k, lst) <- skillCategories) yield PlainFormattedSectionItem(k, lst.reduceLeft(_ + ", " + _))).toSeq)
+  }
+}
 
 //object CertificationsParser extends FieldsParser {
 //  protected val thisField = "position"
@@ -139,12 +161,14 @@ object EducationsParser extends FieldsParser {
 //  }
 //}
 
-//object ProjectsParser extends FieldsParser {
-//  protected val thisField = "project"
-//  protected val extractFromXML: Node => FormattedItem = node => {
-//    PlainFormattedSectionItem("", "")
-//  }
-//}
+object ProjectsParser extends FieldsParser {
+  protected val thisField = "project"
+  protected val extractFromXML: Node => Option[FormattedItem] = node => for {
+    name        <- getTextValue(node)(Seq("name"))
+    description <- getTextValue(node)(Seq("description"))
+    descItems   = parseContentIntoBulletPoints(description) map { new FormattedBulletPointItem(_) }
+  } yield FormattedSectionItem(name, "", "", descItems)
+}
 
 //object SummaryParser extends FieldsParser {
 //  protected val thisField = "summary"
@@ -160,12 +184,12 @@ object ParserSelector {
       case "publication"    | "publications"    => Some(PublicationsParser)
 //      case "patent"         | "patents"         => Some(PatentsParser)
 //      case "language"       | "languages"       => Some(LanguagesParser)
-//      case "skill"          | "skills"          => Some(SkillsParser)
+      case "skill"          | "skills"          => Some(SkillsParser)
 //      case "certification"  | "certifications"  => Some(CertificationsParser)
       case "education"      | "educations"      => Some(EducationsParser)
 //      case "course"         | "courses"         => Some(CoursesParser)
 //      case "volunteer"      | "volunteers"      => Some(VolunteersParser)
-//      case "project"        | "projects"        => Some(ProjectsParser)
+      case "project"        | "projects"        => Some(ProjectsParser)
 //      case "summary"                            => Some(SummaryParser)
       case _                                    => None
     }
