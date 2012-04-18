@@ -28,13 +28,22 @@ case class FormattedContactInfo(address: String,
 }
 
 case class FormattedSectionItem(itemTitle:    String,
-                                startDate:    Date,
-                                endDate:      Date,
+                                startDateStr:    String,
+                                endDateStr:      String,
                                 itemContents: Seq[FormattedBulletPointItem]
                                ) extends FormattedItem {
   import AppConfig.DATE_FORMATTER.format
 
-  def getStartAndEndDateStr = format(startDate) + " --- " + format(endDate)
+  def this(itemTitle:    String,
+           startDate:    Date,
+           endDate:      Date,
+           itemContents: Seq[FormattedBulletPointItem]) =
+      this(itemTitle,
+           AppConfig.DATE_FORMATTER.format(startDate),
+           AppConfig.DATE_FORMATTER.format(endDate),
+           itemContents)
+
+  def getStartAndEndDateStr = startDateStr + " --- " + endDateStr
 
   def generateLatex(tmplProv: TemplateProvider): String = tmplProv generateSectionItem this
 }
@@ -42,13 +51,25 @@ case class FormattedSectionItem(itemTitle:    String,
 case class FormattedSectionItemWithLocation(itemTitle: String,
                                             itemSubTitle: String,
                                             location: String,
-                                            startDate: Date,
-                                            endDate: Date,
+                                            startDateStr: String,
+                                            endDateStr: String,
                                             itemContents: Seq[FormattedBulletPointItem]
                                            ) extends FormattedItem {
-  import AppConfig.DATE_FORMATTER.format
 
-  def getStartAndEndDateStr = format(startDate) + " --- " + format(endDate)
+  def this(itemTitle: String,
+           itemSubTitle: String,
+           location: String,
+           startDate: Date,
+           endDate: Date,
+           itemContents: Seq[FormattedBulletPointItem]) =
+      this(itemTitle,
+           itemSubTitle,
+           location,
+           AppConfig.DATE_FORMATTER.format(startDate),
+           AppConfig.DATE_FORMATTER.format(endDate),
+           itemContents)
+
+  def getStartAndEndDateStr = startDateStr + " --- " + endDateStr
 
   def generateLatex(tmplProv: TemplateProvider): String = tmplProv generateSectionItemWithLocation this
 }

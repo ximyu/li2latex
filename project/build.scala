@@ -10,7 +10,8 @@ object Li2Latex extends Build {
     libraryDependencies ++= Seq(
       "org.scribe" % "scribe" % "1.3.0",
       "net.databinder" %% "dispatch-http" % "0.8.8",
-      "org.specs2" %% "specs2" % "1.9" % "test"
+      "org.specs2" %% "specs2" % "1.9" % "test",
+      "com.weiglewilczek.slf4s" %% "slf4s" % "1.0.7"
     ),
     resolvers ++= Seq(
       "snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",

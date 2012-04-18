@@ -1,78 +1,172 @@
 package li2latex.model
 
-import xml.NodeSeq
+import java.util.{Calendar, GregorianCalendar, Date}
+import li2latex.config.AppConfig
+import xml.{Node, NodeSeq}
+import scala.Predef._
+import scala.Option
 
 sealed trait FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem]
+  private val NODE_COUNT_NOT_MATCH = "The number of nodes doesn't match. The XML reponse must be corrupted."
+
+  protected val thisField: String
+
+  protected val extractFromXML: Node => Option[FormattedItem]
+
+  private val nodeCountMatches: NodeSeq => String => Boolean = input => field =>
+    (input headOption) flatMap (_.attributes.asAttrMap.get("total")) map (_.toInt == (input \ field).length ) getOrElse false
+
+  val parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
+    if (!nodeCountMatches(resp)(thisField)) Left(NODE_COUNT_NOT_MATCH)
+    else Right(for {
+      node <- resp \ thisField
+      item <- extractFromXML(node)
+    } yield item)
+  }
+
+  // If the content have bulletpoints indicated by "*", then try to separate all
+  // bulletpoints into a Seq of String
+  protected val parseContentIntoBulletPoints: String => Seq[String] = content => {
+    Nil
+  }
+
+  private def buildCalendar(month: Int, year: Int): Calendar = {
+    val cal = new GregorianCalendar()
+    cal.set(Calendar.MONTH, month)
+    cal.set(Calendar.YEAR, year)
+    cal
+  }
+
+  protected val getFormattedDateStr: String => String => String =
+    year => month => AppConfig.DATE_FORMATTER.format(buildCalendar(month.toInt, year.toInt))
+
+  protected val getTextValue: NodeSeq => Seq[String] => Option[String] =
+    node => paths => paths.foldLeft(node)(_ \\ _).headOption.map(_.text)
 }
 
-object ContactInfoParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
+object ContactInfoParser {//extends FieldsParser {
+//  protected val thisField: String
+//  protected val extractFromXML: Node => FormattedItem
 }
 
 object PositionsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
+  protected val thisField = "position"
+
+  protected val extractFromXML: Node => Option[FormattedItem] = node => for {
+    title        <- getTextValue(node)(Seq("title"))
+    company      <- getTextValue(node)(Seq("company"))
+    startYear    <- getTextValue(node)(Seq("start-date", "year"))
+    startMonth   <- getTextValue(node)(Seq("start-date", "month"))
+    summary      <- getTextValue(node)(Seq("summary"))
+    isCurrentStr <- getTextValue(node)(Seq("is-current"))
+    isCurrent    = isCurrentStr.toBoolean
+    summarySeq   = parseContentIntoBulletPoints(summary)
+    items        = summarySeq map { new FormattedBulletPointItem(_) }
+    startDateStr = getFormattedDateStr(startYear)(startMonth)
+    if (!isCurrent)
+    endYear      <- getTextValue(node)(Seq("end-date", "year"))
+    endMonth     <- getTextValue(node)(Seq("end-date", "month"))
+  } yield {
+    val endDateStr = if (isCurrent) "Current" else getFormattedDateStr(endYear)(endMonth)
+    FormattedSectionItemWithLocation(company, title, "", startDateStr, endDateStr, items)
+  }
 }
 
 object PublicationsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
+  protected val thisField = "publication"
+
+  protected val extractFromXML: Node => Option[FormattedItem] = node => for {
+    title <- getTextValue(node)(Seq("title"))
+    year  <- getTextValue(node)(Seq("year"))
+    month <- getTextValue(node)(Seq("month"))
+  } yield PlainFormattedSectionItem("", title + ", " + getFormattedDateStr(year)(month))
 }
 
-object PatentsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object PatentsParser extends FieldsParser {
+//  protected val thisField = "patent"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
-object LanguagesParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object LanguagesParser extends FieldsParser {
+//  protected val thisField = "language"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
-object SkillsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object SkillsParser extends FieldsParser {
+//  protected val thisField = "skill"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
-object CertificationsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object CertificationsParser extends FieldsParser {
+//  protected val thisField = "position"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//
+//  }
+//}
 
 object EducationsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
+  protected val thisField = "education"
+
+  protected val extractFromXML: Node => Option[FormattedItem] = node => for {
+    school     <- getTextValue(node)(Seq("school-name"))
+    activities <- getTextValue(node)(Seq("activities"))
+    degree     <- getTextValue(node)(Seq("degree"))
+    major      <- getTextValue(node)(Seq("field-of-study"))
+    startYear  <- getTextValue(node)(Seq("start-date"))
+    endYear    <- getTextValue(node)(Seq("end-date"))
+    activitiesSeq = parseContentIntoBulletPoints(activities)
+    items = Seq(new FormattedBulletPointItem(degree + ", " + major)) ++ (activitiesSeq map { new FormattedBulletPointItem(_) })
+  } yield FormattedSectionItem(school, startYear, endYear, items)
 }
 
-object CoursesParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object CoursesParser extends FieldsParser {
+//  protected val thisField = "course"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
-object VolunteersParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object VolunteersParser extends FieldsParser {
+//  protected val thisField = "volunteer-experience"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
-object ProjectsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object ProjectsParser extends FieldsParser {
+//  protected val thisField = "project"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
-object HonorsParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
-
-object SummaryParser extends FieldsParser {
-  val parseOAuthResponse: NodeSeq => Seq[FormattedItem] = resp => Nil
-}
+//object SummaryParser extends FieldsParser {
+//  protected val thisField = "summary"
+//  protected val extractFromXML: Node => FormattedItem = node => {
+//    PlainFormattedSectionItem("", "")
+//  }
+//}
 
 object ParserSelector {
   val getParser: String => Option[FieldsParser] = fields =>
     fields.trim.toLowerCase match {
       case "position"       | "positions"       => Some(PositionsParser)
       case "publication"    | "publications"    => Some(PublicationsParser)
-      case "patent"         | "patents"         => Some(PatentsParser)
-      case "language"       | "languages"       => Some(LanguagesParser)
-      case "skill"          | "skills"          => Some(SkillsParser)
-      case "certification"  | "certifications"  => Some(CertificationsParser)
+//      case "patent"         | "patents"         => Some(PatentsParser)
+//      case "language"       | "languages"       => Some(LanguagesParser)
+//      case "skill"          | "skills"          => Some(SkillsParser)
+//      case "certification"  | "certifications"  => Some(CertificationsParser)
       case "education"      | "educations"      => Some(EducationsParser)
-      case "course"         | "courses"         => Some(CoursesParser)
-      case "volunteer"      | "volunteers"      => Some(VolunteersParser)
-      case "project"        | "projects"        => Some(ProjectsParser)
-      case "honor"          | "honors"          => Some(HonorsParser)
-      case "summary"                            => Some(SummaryParser)
+//      case "course"         | "courses"         => Some(CoursesParser)
+//      case "volunteer"      | "volunteers"      => Some(VolunteersParser)
+//      case "project"        | "projects"        => Some(ProjectsParser)
+//      case "summary"                            => Some(SummaryParser)
       case _                                    => None
     }
 }

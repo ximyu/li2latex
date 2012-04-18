@@ -1,6 +1,7 @@
 package li2latex.model
 
 import li2latex.oauth.OAuthFields
+import com.weiglewilczek.slf4s.Logging
 import xml.NodeSeq
 
 case class LinkedInFields(name: String) {
@@ -11,15 +12,18 @@ object LinkedInFields {
   implicit def stringToLinkedInFields(fields: String): LinkedInFields = LinkedInFields(fields)
 }
 
-case class Section(fields: String, title: String, parser: Option[FieldsParser]) extends OAuthFields {
+case class Section(fields: String, title: String, parser: Option[FieldsParser]) extends OAuthFields with Logging {
   def getFormattedItems: Seq[FormattedItem] =
-    liftM2(fp => ns => fp parseOAuthResponse ns)(parser, getOAuthResponse) getOrElse Nil
+    ((liftM2(fp => ns => fp parseOAuthResponse ns)(parser, getOAuthResponse) getOrElse Left("")): Either[String, Seq[FormattedItem]]) match {
+      case Left(msg) => logger.warn("Error: " + msg); Nil
+      case Right(result @ Seq(_*)) => result
+    }
 
   // A not so generalized implementation of liftM2 which mimics
   // liftM2 :: (Monad m) => (a1 -> a2 -> r) -> m a1 -> m a2 -> m r
   // in Haskell
-  private def liftM2(f: FieldsParser => NodeSeq => Seq[FormattedItem])
-            (m1: Option[FieldsParser], m2: Option[NodeSeq]): Option[Seq[FormattedItem]] = {
+  private def liftM2(f: FieldsParser => NodeSeq => Either[String, Seq[FormattedItem]])
+            (m1: Option[FieldsParser], m2: Option[NodeSeq]): Option[Either[String, Seq[FormattedItem]]] = {
     for {
       fp <- m1
       ns <- m2
