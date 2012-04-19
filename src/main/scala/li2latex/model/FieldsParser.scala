@@ -2,12 +2,14 @@ package li2latex.model
 
 import java.util.{Calendar, GregorianCalendar, Date}
 import li2latex.config.AppConfig
-import xml.{Node, NodeSeq}
 import scala.Predef._
 import scala.Option
+import xml.{XML, Node, NodeSeq}
+import li2latex.oauth.{OAuthClientImpl, OAuthFields}
+import com.weiglewilczek.slf4s.Logging
 
-sealed trait FieldsParser {
-  private val NODE_COUNT_NOT_MATCH = "The number of nodes doesn't match. The XML reponse must be corrupted."
+sealed trait FieldsParser extends Logging {
+  private val NODE_COUNT_NOT_MATCH = "The number of nodes doesn't match. The XML reponse must be corrupted. Input fields: "
 
   protected val thisField: String
 
@@ -17,7 +19,9 @@ sealed trait FieldsParser {
     (input headOption) flatMap (_.attributes.asAttrMap.get("total")) map (_.toInt == (input \ field).length ) getOrElse false
 
   def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
-    if (!nodeCountMatches(resp)(thisField)) Left(NODE_COUNT_NOT_MATCH)
+    logger.debug("LinkedIn response for field " + thisField)
+    logger.debug(resp.toString())
+    if (!nodeCountMatches(resp)(thisField)) Left(NODE_COUNT_NOT_MATCH + thisField)
     else Right(for {
       node <- resp \ thisField
       item <- extractFromXML(node)
@@ -38,15 +42,38 @@ sealed trait FieldsParser {
   }
 
   protected val getFormattedDateStr: String => String => String =
-    year => month => AppConfig.DATE_FORMATTER.format(buildCalendar(month.toInt, year.toInt))
+    year => month => AppConfig.DATE_FORMATTER.format(buildCalendar(month.toInt, year.toInt).getTime)
 
   protected val getTextValue: NodeSeq => Seq[String] => Option[String] =
     node => paths => paths.foldLeft(node)(_ \\ _).headOption.map(_.text)
 }
 
-object ContactInfoParser {//extends FieldsParser {
-//  protected val thisField: String
-//  protected val extractFromXML: Node => FormattedItem
+object NameParser {
+  val fields = "formatted-name"
+
+  def getOAuthResponse = XML loadString (OAuthClientImpl getByField fields) match {
+    case <person>{ ns @ _* }</person> => Some(ns)
+    case <error>{ _* }</error>        => None
+    case _                            => None
+  }
+
+  val formattedName:Option[String] = getOAuthResponse.flatMap(resp => (resp \\ fields).headOption.map(_.text))
+}
+
+object ContactInfoParser extends FieldsParser {
+  protected val thisField = AppConfig.DEFAULT_CONTACT_INFO_FIELDS
+
+  protected val extractFromXML: Node => Option[FormattedItem] = node => Some(PlainFormattedSectionItem("Unimplmented",""))
+
+  override def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => (for {
+    phoneNumber <- (resp \ "phone-number" \ "phone-number").headOption.map(_.text)
+    email       <- getTextValue(resp)(Seq("im-account-name"))
+    address     <- getTextValue(resp)(Seq("main-address"))
+  } yield FormattedContactInfo(address, phoneNumber, email)) match {
+    case Some(x) => Right(Seq(x))
+    case None    => Left("Cannot parse contact info")
+  }
+
 }
 
 object PositionsParser extends FieldsParser {
@@ -107,7 +134,7 @@ object SkillsParser extends FieldsParser {
     import scala.collection.mutable.Map
     val skillCategories: Map[String, List[String]] =
       Map("Programming Languages" -> Nil,
-          "Framework"             -> Nil,
+          "Frameworks"             -> Nil,
           "Operating Systems"     -> Nil)
     var currentCategory: String = "Programming Languages"
     super.parseOAuthResponse(resp).right.foreach{items =>
@@ -191,6 +218,7 @@ object ParserSelector {
 //      case "volunteer"      | "volunteers"      => Some(VolunteersParser)
       case "project"        | "projects"        => Some(ProjectsParser)
 //      case "summary"                            => Some(SummaryParser)
+      case "contact"                            => Some(ContactInfoParser)
       case _                                    => None
     }
 }

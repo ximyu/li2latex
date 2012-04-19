@@ -6,8 +6,9 @@ import org.scribe.oauth.OAuthService
 import org.scribe.builder.ServiceBuilder
 import org.scribe.exceptions.OAuthException
 import org.scribe.model.{OAuthRequest, Verb, Token, Verifier}
+import com.weiglewilczek.slf4s.Logging
 
-trait OAuthClient {
+trait OAuthClient extends Logging {
   private lazy val builder = new ServiceBuilder
   private lazy val service: OAuthService =
     builder provider (new LinkedInApi) apiKey (AppConfig.API_KEY) apiSecret (AppConfig.API_SECRET) build()
@@ -17,9 +18,9 @@ trait OAuthClient {
     // Get the Request Token
     val reqToken = service.getRequestToken
     val authUrl = service.getAuthorizationUrl(reqToken)
-    println("Please open the following authorization URL:\n")
-    println(authUrl)
-    println("\nPaste your verifier here:")
+    logger.info("Please open the following authorization URL:")
+    logger.info(authUrl)
+    logger.info("Paste your verifier here:")
     val v = new Verifier(readLine())
     // Get the Access Token
     try {

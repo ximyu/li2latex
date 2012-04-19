@@ -186,4 +186,19 @@ object SampleFields {
 
   val summaryField: NodeSeq =
     <summary>SDE@Microsoft</summary>
+
+  val contactInfoFields: NodeSeq =
+    <phone-numbers total="1">
+      <phone-number>
+        <phone-type>mobile</phone-type>
+        <phone-number>206-949-2950</phone-number>
+      </phone-number>
+    </phone-numbers>
+    <im-accounts total="1">
+      <im-account>
+        <im-account-type>gtalk</im-account-type>
+        <im-account-name>ximing.yu@gmail.com</im-account-name>
+      </im-account>
+    </im-accounts>
+    <main-address>3505 167th Ct NE Apt EE102, Redmond WA 98052</main-address>
 }

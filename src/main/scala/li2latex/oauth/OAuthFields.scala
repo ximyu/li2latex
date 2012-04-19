@@ -1,13 +1,16 @@
 package li2latex.oauth
 
 import xml.{NodeSeq, XML}
+import li2latex.model.Section
 
 
 trait OAuthFields {
-  val fields: String
+  self: Section =>
+
+  import scala.xml.Utility.trim
 
   lazy val getOAuthResponse: Option[NodeSeq] =
-    XML loadString (OAuthClientImpl getByField fields) match {
+    trim(XML.loadString(OAuthClientImpl getByField fields).head) match {
       case <person>{ ns @ _* }</person> => Some(ns)
       case <error>{ _* }</error>        => None
       case _                            => None

@@ -11,6 +11,8 @@ object Li2Latex extends Build {
       "org.scribe" % "scribe" % "1.3.0",
       "net.databinder" %% "dispatch-http" % "0.8.8",
       "org.specs2" %% "specs2" % "1.9" % "test",
+      "org.slf4j" % "slf4j-api" % "1.6.1",
+      "org.slf4j" % "slf4j-log4j12" % "1.6.1",
       "com.weiglewilczek.slf4s" %% "slf4s" % "1.0.7"
     ),
     resolvers ++= Seq(
