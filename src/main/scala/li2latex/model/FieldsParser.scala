@@ -3,10 +3,10 @@ package li2latex.model
 import java.util.{Calendar, GregorianCalendar, Date}
 import li2latex.config.AppConfig
 import scala.Predef._
-import scala.Option
 import xml.{XML, Node, NodeSeq}
 import li2latex.oauth.{OAuthClientImpl, OAuthFields}
 import com.weiglewilczek.slf4s.Logging
+import scala.Option
 
 sealed trait FieldsParser extends Logging {
   private val NODE_COUNT_NOT_MATCH = "The number of nodes doesn't match. The XML reponse must be corrupted. Input fields: "
@@ -30,9 +30,8 @@ sealed trait FieldsParser extends Logging {
 
   // If the content have bulletpoints indicated by "*", then try to separate all
   // bulletpoints into a Seq of String
-  protected val parseContentIntoBulletPoints: String => Seq[String] = content => {
-    Nil
-  }
+  protected val parseContentIntoBulletPoints: String => Seq[String] = content =>
+    content.split("\\*").map(_.trim).filter(!_.isEmpty)
 
   private def buildCalendar(month: Int, year: Int): Calendar = {
     val cal = new GregorianCalendar()
@@ -81,7 +80,7 @@ object PositionsParser extends FieldsParser {
 
   protected val extractFromXML: Node => Option[FormattedItem] = node => for {
     title        <- getTextValue(node)(Seq("title"))
-    company      <- getTextValue(node)(Seq("company"))
+    company      <- getTextValue(node)(Seq("company", "name"))
     startYear    <- getTextValue(node)(Seq("start-date", "year"))
     startMonth   <- getTextValue(node)(Seq("start-date", "month"))
     summary      <- getTextValue(node)(Seq("summary"))
@@ -90,11 +89,12 @@ object PositionsParser extends FieldsParser {
     summarySeq   = parseContentIntoBulletPoints(summary)
     items        = summarySeq map { new FormattedBulletPointItem(_) }
     startDateStr = getFormattedDateStr(startYear)(startMonth)
-    if (!isCurrent)
-    endYear      <- getTextValue(node)(Seq("end-date", "year"))
-    endMonth     <- getTextValue(node)(Seq("end-date", "month"))
   } yield {
-    val endDateStr = if (isCurrent) "Current" else getFormattedDateStr(endYear)(endMonth)
+    val endDateStr = if (isCurrent) "Current" else {
+      val endYear  = getTextValue(node)(Seq("end-date", "year")).get
+      val endMonth = getTextValue(node)(Seq("end-date", "month")).get
+      getFormattedDateStr(endYear)(endMonth)
+    }
     FormattedSectionItemWithLocation(company, title, "", startDateStr, endDateStr, items)
   }
 }
@@ -170,7 +170,7 @@ object EducationsParser extends FieldsParser {
     startYear  <- getTextValue(node)(Seq("start-date"))
     endYear    <- getTextValue(node)(Seq("end-date"))
     activitiesSeq = parseContentIntoBulletPoints(activities)
-    items = Seq(new FormattedBulletPointItem(degree + ", " + major)) ++ (activitiesSeq map { new FormattedBulletPointItem(_) })
+    items = Seq(new FormattedBulletPointItem(degree + " in " + major)) ++ (activitiesSeq map { new FormattedBulletPointItem(_) })
   } yield FormattedSectionItem(school, startYear, endYear, items)
 }
 
