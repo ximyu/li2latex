@@ -3,6 +3,7 @@ package li2latex.main
 import li2latex.model.Resume
 import li2latex.model.LinkedInFields._
 import com.weiglewilczek.slf4s.Logging
+import scalax.file.Path
 
 object Launcher extends App with Logging{
 
@@ -14,27 +15,42 @@ object Launcher extends App with Logging{
       "skills" >> "Skills",
       "projects" >> "Project Experience"
     )
-    logger.info("Enter the output TeX file name [Default \"resume.tex\"]: ")
+    cleanup()
+    print("Enter the output TeX file name [Default \"resume.tex\"]: ")
     val ValidTexFileRegex = """(.+?)\.tex""".r
-    val sampleResume1 = Console.readLine().trim match {
-      case ValidTexFileRegex(pathPrefix) => Resume(
-        filePath = pathPrefix + ".tex",
-        sections = sections
-      )
-      case _ => Resume(sections = sections)
+    val texOutputFilePath = Console.readLine().trim match {
+      case ValidTexFileRegex(pathPrefix) => pathPrefix + ".tex"
+      case _                             => "resume.tex"
     }
+    print("Enter the local fix-up file name [Default \"myfixup.xml\"]: ")
+    val fixUpFilePath = Console.readLine().trim match {
+      case ""       => "myfixup.xml"
+      case name @ _ => name
+    }
+    val sampleResume1 = Resume(
+      filePath = texOutputFilePath,
+      fixUpFilePath = fixUpFilePath,
+      sections = sections
+    )
 
     logger.info("Start generating your resume...")
 
     sampleResume1 generateResume()
 
-    logger.info("Finished generating your resume. Thanks for using.")
+    logger.info("Finished generating the TeX file of your resume. Please run pdflatex to generate the PDF version of your resume. Thanks for using.")
   }
 
-  logger.info("Welcome to li2latex, please choose what you would like to do:")
-  logger.info("[1] Generate TeX resume file; [2] Test out LinkedIn API; [Default 1]: ")
+  // This method will clean up output of previous runs
+  // in the project directory
+  private def cleanup() {
+    Path(".") ** "*.{tex,log,pdf,cls}" foreach (_.delete())
+  }
+
+  println("Welcome to li2latex, please choose what you would like to do:")
+  print("[1] Generate TeX resume file; [2] Test out LinkedIn API; [3] Clean up environment; [Default 1]: ")
   Console.readLine().trim match {
     case "2" => APITestConsole.start()
+    case "3" => cleanup()
     case _   => generateResume()
   }
 }

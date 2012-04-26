@@ -11,4 +11,6 @@ object AppConfig {
   val DEFAULT_CONTACT_INFO_FIELDS = "formatted-name,phone-numbers,im-accounts,main-address"
 
   val DATE_FORMATTER = new SimpleDateFormat("MM/yyyy")
+
+  val DEFAULT_FIXUP_FILE = "myfixup.xml"
 }

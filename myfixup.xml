@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<fixes>
+    <fix scope="positions">
+        <id>189394455</id>
+        <title>Software Development Engineer</title>
+        <company-name>Microsoft</company-name>
+        <location>Redmond, WA</location>
+    </fix>
+    <fix scope="positions">
+        <id>109528084</id>
+        <title>Research Assistant</title>
+        <company-name>Artificial Intelligence Lab, The University of Arizona</company-name>
+        <location>Tucson, AZ</location>
+    </fix>
+    <fix scope="positions">
+        <id>160022251</id>
+        <title>Research Assistant</title>
+        <company-name>Electrical and Computer Engineering Department, The University of Arizona</company-name>
+        <location>Tucson, AZ</location>
+    </fix>
+    <fix scope="positions">
+        <id>160021238</id>
+        <title>Software Development Intern</title>
+        <company-name>Cisco Systems</company-name>
+        <location>Shanghai, China</location>
+    </fix>
+    <fix scope="projects">
+        <id>25</id>
+        <name>Dark Web Forum Portal</name>
+        <start-date>01/2010</start-date>
+        <end-date>02/2011</end-date>
+    </fix>
+    <fix scope="projects">
+        <id>27</id>
+        <name>Real-world and virtual-world mapping</name>
+        <start-date>09/2009</start-date>
+        <end-date>05/2010</end-date>
+    </fix>
+    <fix scope="projects">
+        <id>78</id>
+        <name>Secure Site Access</name>
+        <start-date>09/2011</start-date>
+        <end-date>Present</end-date>
+    </fix>
+    <fix scope="projects">
+        <id>80</id>
+        <name>BetSmart -- A soccer betting recommendation system</name>
+        <start-date>01/2010</start-date>
+        <end-date>05/2010</end-date>
+    </fix>
+</fixes>

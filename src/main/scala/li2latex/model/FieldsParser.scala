@@ -1,13 +1,13 @@
 package li2latex.model
 
-import java.util.{Calendar, GregorianCalendar, Date}
+import java.util.{Calendar, GregorianCalendar}
 import li2latex.config.AppConfig
 import scala.Predef._
 import xml.{XML, Node, NodeSeq}
-import li2latex.oauth.{OAuthClientImpl, OAuthFields}
+import li2latex.oauth.{OAuthClientImpl}
 import com.weiglewilczek.slf4s.Logging
-import li2latex.model.NameParser._
 import scala.{Left, Option}
+import li2latex.util.LocalFixUp
 
 sealed trait FieldsParser extends Logging {
   private val NODE_COUNT_NOT_MATCH = "The number of nodes doesn't match. The XML reponse must be corrupted. Input fields: "
@@ -85,18 +85,19 @@ object PositionsParser extends FieldsParser {
     startYear    <- getTextValue(node)(Seq("start-date", "year"))
     startMonth   <- getTextValue(node)(Seq("start-date", "month"))
     summary      <- getTextValue(node)(Seq("summary"))
+    location     <- LocalFixUp.lookupLocation(title, company)
     isCurrentStr <- getTextValue(node)(Seq("is-current"))
     isCurrent    = isCurrentStr.toBoolean
     summarySeq   = parseContentIntoBulletPoints(summary)
     items        = summarySeq map { new FormattedBulletPointItem(_) }
     startDateStr = getFormattedDateStr(startYear)(startMonth)
   } yield {
-    val endDateStr = if (isCurrent) "Current" else {
+    val endDateStr = if (isCurrent) "Present" else {
       val endYear  = getTextValue(node)(Seq("end-date", "year")).get
       val endMonth = getTextValue(node)(Seq("end-date", "month")).get
       getFormattedDateStr(endYear)(endMonth)
     }
-    FormattedSectionItemWithLocation(company, title, "", startDateStr, endDateStr, items)
+    FormattedSectionItemWithLocation(company, title, location, startDateStr, endDateStr, items)
   }
 }
 
@@ -127,6 +128,11 @@ object PublicationsParser extends FieldsParser {
 object SkillsParser extends FieldsParser {
   protected val thisField = "skill"
 
+  private val CAT_PROG = "Programming Languages"
+  private val CAT_OS   = "Operating Systems"
+  private val CAT_DB   = "Databases"
+  private val CAT_WEB  = "Web Development"
+
   protected val extractFromXML: Node => Option[FormattedItem] = node => for {
     name <- getTextValue(node)(Seq("name"))
   } yield PlainFormattedSectionItem("", name)
@@ -134,10 +140,10 @@ object SkillsParser extends FieldsParser {
   override def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
     import scala.collection.mutable.Map
     val skillCategories: Map[String, List[String]] =
-      Map("Programming Languages" -> Nil,
-          "Operating Systems"     -> Nil,
-          "Databases"             -> Nil,
-          "Web Development"       -> Nil)
+      Map(CAT_PROG -> Nil,
+          CAT_OS   -> Nil,
+          CAT_DB   -> Nil,
+          CAT_WEB  -> Nil)
     var currentCategory: String = "Programming Languages"
     super.parseOAuthResponse(resp).right.foreach{items =>
       items.foreach{item =>
@@ -150,7 +156,14 @@ object SkillsParser extends FieldsParser {
         }
       }
     }
-    Right((for ((k, lst) <- skillCategories) yield PlainFormattedSectionItem(k, lst.reduceLeft(_ + ", " + _))).toSeq)
+    //Right((for ((k, lst) <- skillCategories) yield PlainFormattedSectionItem(k, lst.reduceLeft(_ + ", " + _))).toSeq)
+    // Hard coding the four categories here as iterating through the Map will not yield expected order
+    Right(Seq(
+      PlainFormattedSectionItem(CAT_PROG, skillCategories.get(CAT_PROG).get.reduceLeft(_ + ", " + _)),
+      PlainFormattedSectionItem(CAT_OS, skillCategories.get(CAT_OS).get.reduceLeft(_ + ", " + _)),
+      PlainFormattedSectionItem(CAT_DB, skillCategories.get(CAT_DB).get.reduceLeft(_ + ", " + _)),
+      PlainFormattedSectionItem(CAT_WEB, skillCategories.get(CAT_WEB).get.reduceLeft(_ + ", " + _))
+    ))
   }
 }
 
@@ -200,22 +213,21 @@ object ProjectsParser extends FieldsParser {
   protected val thisField = "project"
 
   protected val extractFromXML: Node => Option[FormattedItem] = node => for {
-    name        <- getTextValue(node)(Seq("name"))
-    description <- getTextValue(node)(Seq("description"))
+    name                 <- getTextValue(node)(Seq("name"))
+    description          <- getTextValue(node)(Seq("description"))
+    (startDate, endDate) <- LocalFixUp.lookupStartEndDate(name)
     descItems   = parseContentIntoBulletPoints(description) map { new FormattedBulletPointItem(_) }
-  } yield FormattedSectionItem(name, "", "", descItems)
+  } yield FormattedSectionItem(name, startDate, endDate, descItems)
 
-  // LinkedIn API doesn't provide the start and end date of a project yet
-  // This method was supposed to sort project by start date
-//  override def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
-//    val formattedItemDate: FormattedItem => Long = item =>
-//      item match {
-//        case i: FormattedSectionItem             => AppConfig.DATE_FORMATTER.parse(i.startDateStr).getTime
-//        case _                                   => -1
-//      }
-//
-//    super.parseOAuthResponse(resp).right.map(_ sortBy formattedItemDate)
-//  }
+  override def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
+    val formattedItemDate: FormattedItem => Long = item =>
+      item match {
+        case i: FormattedSectionItem             => 0 - AppConfig.DATE_FORMATTER.parse(i.startDateStr).getTime
+        case _                                   => -1
+      }
+
+    super.parseOAuthResponse(resp).right.map(_ sortBy formattedItemDate)
+  }
 }
 
 //object SummaryParser extends FieldsParser {

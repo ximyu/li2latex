@@ -4,10 +4,12 @@ import li2latex.template.{DefaultTemplateProvider, TemplateProvider}
 import com.weiglewilczek.slf4s.Logging
 import java.io.{FileWriter, File}
 import java.net.URL
+import li2latex.util.LocalFixUp
 
 
 case class Resume(name:             String = "My Resume", // The name of your resume template
                   filePath:         String = "resume.tex", // The output file path
+                  fixUpFilePath:    String = "myfixup.xml", // The XML file containing fix-up info
                   templateProvider: TemplateProvider = DefaultTemplateProvider,
                   sections:         Seq[Section]) extends Logging {
 
@@ -18,6 +20,7 @@ case class Resume(name:             String = "My Resume", // The name of your re
 
     logger.info("Ensure the cls file for the resume exists on the same path as output text file")
     ensureClsFile()
+    LocalFixUp.initFixUpLookup(fixUpFilePath)
 
     val texFileContent = getFormattedWholeDocument.generateLatex(templateProvider)
     logger.debug("Generated TeX file content:")

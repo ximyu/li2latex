@@ -18,9 +18,9 @@ trait OAuthClient extends Logging {
     // Get the Request Token
     val reqToken = service.getRequestToken
     val authUrl = service.getAuthorizationUrl(reqToken)
-    logger.info("Please open the following authorization URL:")
-    logger.info(authUrl)
-    logger.info("Paste your verifier here:")
+    println("Please open the following authorization URL:")
+    println(authUrl)
+    print("\nPaste your verifier here: ")
     val v = new Verifier(readLine())
     // Get the Access Token
     try {
