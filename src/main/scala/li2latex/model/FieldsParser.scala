@@ -6,7 +6,8 @@ import scala.Predef._
 import xml.{XML, Node, NodeSeq}
 import li2latex.oauth.{OAuthClientImpl, OAuthFields}
 import com.weiglewilczek.slf4s.Logging
-import scala.Option
+import li2latex.model.NameParser._
+import scala.{Left, Option}
 
 sealed trait FieldsParser extends Logging {
   private val NODE_COUNT_NOT_MATCH = "The number of nodes doesn't match. The XML reponse must be corrupted. Input fields: "
@@ -44,7 +45,7 @@ sealed trait FieldsParser extends Logging {
     year => month => AppConfig.DATE_FORMATTER.format(buildCalendar(month.toInt, year.toInt).getTime)
 
   protected val getTextValue: NodeSeq => Seq[String] => Option[String] =
-    node => paths => paths.foldLeft(node)(_ \\ _).headOption.map(_.text)
+    node => paths => paths.foldLeft(node)(_ \\ _).headOption.map(_.text).map(_.replace("#", "\\#").replace("&", "\\&"))
 }
 
 object NameParser {
@@ -134,8 +135,9 @@ object SkillsParser extends FieldsParser {
     import scala.collection.mutable.Map
     val skillCategories: Map[String, List[String]] =
       Map("Programming Languages" -> Nil,
-          "Frameworks"             -> Nil,
-          "Operating Systems"     -> Nil)
+          "Operating Systems"     -> Nil,
+          "Databases"             -> Nil,
+          "Web Development"       -> Nil)
     var currentCategory: String = "Programming Languages"
     super.parseOAuthResponse(resp).right.foreach{items =>
       items.foreach{item =>
@@ -164,14 +166,20 @@ object EducationsParser extends FieldsParser {
 
   protected val extractFromXML: Node => Option[FormattedItem] = node => for {
     school     <- getTextValue(node)(Seq("school-name"))
-    activities <- getTextValue(node)(Seq("activities"))
     degree     <- getTextValue(node)(Seq("degree"))
     major      <- getTextValue(node)(Seq("field-of-study"))
     startYear  <- getTextValue(node)(Seq("start-date"))
     endYear    <- getTextValue(node)(Seq("end-date"))
-    activitiesSeq = parseContentIntoBulletPoints(activities)
-    items = Seq(new FormattedBulletPointItem(degree + " in " + major)) ++ (activitiesSeq map { new FormattedBulletPointItem(_) })
-  } yield FormattedSectionItem(school, startYear, endYear, items)
+  } yield {
+    val activitiesOpt = getTextValue(node)(Seq("activities"))
+    val items = Seq(new FormattedBulletPointItem(degree + " in " + major)) ++ {
+      activitiesOpt match {
+        case None => Nil
+        case Some(activities: String) => (parseContentIntoBulletPoints(activities) map { new FormattedBulletPointItem(_) })
+      }
+    }
+    FormattedSectionItem(school, startYear, endYear, items)
+  }
 }
 
 //object CoursesParser extends FieldsParser {
@@ -190,11 +198,24 @@ object EducationsParser extends FieldsParser {
 
 object ProjectsParser extends FieldsParser {
   protected val thisField = "project"
+
   protected val extractFromXML: Node => Option[FormattedItem] = node => for {
     name        <- getTextValue(node)(Seq("name"))
     description <- getTextValue(node)(Seq("description"))
     descItems   = parseContentIntoBulletPoints(description) map { new FormattedBulletPointItem(_) }
   } yield FormattedSectionItem(name, "", "", descItems)
+
+  // LinkedIn API doesn't provide the start and end date of a project yet
+  // This method was supposed to sort project by start date
+//  override def parseOAuthResponse: NodeSeq => Either[String, Seq[FormattedItem]] = resp => {
+//    val formattedItemDate: FormattedItem => Long = item =>
+//      item match {
+//        case i: FormattedSectionItem             => AppConfig.DATE_FORMATTER.parse(i.startDateStr).getTime
+//        case _                                   => -1
+//      }
+//
+//    super.parseOAuthResponse(resp).right.map(_ sortBy formattedItemDate)
+//  }
 }
 
 //object SummaryParser extends FieldsParser {

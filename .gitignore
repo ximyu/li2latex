@@ -6,3 +6,7 @@ ensime.bak
 .idea/*
 .idea_modules/*
 resume.tex
+*.pdf
+*.log
+*.tex
+*.cls

@@ -32,7 +32,6 @@ case class FormattedSectionItem(itemTitle:    String,
                                 endDateStr:      String,
                                 itemContents: Seq[FormattedBulletPointItem]
                                ) extends FormattedItem {
-  import AppConfig.DATE_FORMATTER.format
 
   def this(itemTitle:    String,
            startDate:    Date,

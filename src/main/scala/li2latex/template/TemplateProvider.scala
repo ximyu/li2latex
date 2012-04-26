@@ -19,11 +19,13 @@ trait TemplateProvider {
   def generateBulletPointItem(item: FormattedBulletPointItem): String
 
   def generateContactInfoFields(item: FormattedContactInfo): String
+
+  def clsFilePath: String
 }
 
 object DefaultTemplateProvider extends TemplateProvider {
 
-  private val clsFilePath = "http://dl.dropbox.com/u/6824415/li2latex/resume.cls"
+  val clsFilePath = "http://dl.dropbox.com/u/6824415/li2latex/resume.cls"
 
   private val documentTemplate = String.format(
     """|\documentclass[margin,line]{resume}
@@ -78,7 +80,7 @@ object DefaultTemplateProvider extends TemplateProvider {
 
   private val plainSectionItemTemplate = String.format(
     """|
-       |\textbf{%s}: %s""".stripMargin,
+       |\textbf{%s}: %s \\""".stripMargin,
     TemplateConstants.ITEM_TITLE,
     TemplateConstants.ITEM_CONTENT)
 
@@ -102,16 +104,20 @@ object DefaultTemplateProvider extends TemplateProvider {
     TemplateConstants.CONTACT_ADDRESS_LINE2,
     TemplateConstants.CONTACT_PHONE)
 
-  private def foldAllItems(allItems: Seq[FormattedItem]): String = {
-    allItems.foldLeft(new StringBuilder){(sb, sec) =>
-      sb append sec.generateLatex(this)}.toString()
-  }
+  private val foldAllItems: Seq[FormattedItem] => String = allItems =>
+    allItems.foldLeft(new StringBuilder){_ append _.generateLatex(this)}.toString
 
-  private def foldAllBulletPointItems(allItems: Seq[FormattedBulletPointItem]): String = {
-    val allItemStr = allItems.foldLeft(new StringBuilder){(sb, sec) =>
-      sb append sec.generateLatex(this)}.toString()
+  private val foldAllBulletPointItems: Seq[FormattedBulletPointItem] => String = allItems => {
+    val allItemStr = allItems.foldLeft(new StringBuilder){_ append _.generateLatex(this)}.toString
     bulletPointsContainerTemplate.replace(TemplateConstants.ALL_BULLET_ITEMS, allItemStr)
   }
+
+  private val NO_WRAP_LENGTH = 12
+
+  private val wrapSectionTitle: String => String = title =>
+    if (title.length <= NO_WRAP_LENGTH) title else {
+      title.split("\\s+").reduce(_ + "\\\\" + _)
+    }
 
   def generateWholeDocument(item: FormattedWholeDocument): String = documentTemplate
     .replace(TemplateConstants.PERSON_NAME_TEMPLATE,
@@ -120,7 +126,7 @@ object DefaultTemplateProvider extends TemplateProvider {
       sectionsContainerTemplate.replace(TemplateConstants.ALL_SECTIONS, foldAllItems(item.allSections)))
 
   def generateSection(item: FormattedSection): String = sectionTemplate
-    .replace(TemplateConstants.SECTION_TITLE, item.sectionTitle)
+    .replace(TemplateConstants.SECTION_TITLE, wrapSectionTitle(item.sectionTitle))
     .replace(TemplateConstants.SECTION_CONTENT, foldAllItems(item.allItems))
 
   def generateSectionItem(item: FormattedSectionItem): String = sectionItemTemplate
